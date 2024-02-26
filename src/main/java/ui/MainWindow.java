@@ -7,6 +7,7 @@ import controller.ToDoController;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.util.Calendar;
 import java.util.Date;
 
 public class MainWindow extends JFrame {
@@ -42,29 +43,55 @@ public class MainWindow extends JFrame {
         addButton.addActionListener(this::showAddToDoDialog);
         bottomPanel.add(addButton);
 
+        // Add a Delete button
+        JButton deleteButton = new JButton("Delete To-Do");
+        deleteButton.addActionListener(this::deleteToDoItem);
+        bottomPanel.add(deleteButton);
+
         return bottomPanel;
     }
 
     private void showAddToDoDialog(ActionEvent event) {
         JTextField titleField = new JTextField(20);
         JTextField descriptionField = new JTextField(20);
+
+        // Date picker component
         SpinnerDateModel dateModel = new SpinnerDateModel();
         JSpinner dateSpinner = new JSpinner(dateModel);
+        JSpinner.DateEditor dateEditor = new JSpinner.DateEditor(dateSpinner, "dd/MM/yyyy");
+        dateSpinner.setEditor(dateEditor);
+
+        // Time picker component
+        SpinnerDateModel timeModel = new SpinnerDateModel();
+        JSpinner timeSpinner = new JSpinner(timeModel);
+        JSpinner.DateEditor timeEditor = new JSpinner.DateEditor(timeSpinner, "HH:mm");
+        timeSpinner.setEditor(timeEditor);
+
         JComboBox<Importance> importanceComboBox = new JComboBox<>(Importance.values());
 
         Object[] message = {
                 "Title:", titleField,
                 "Description:", descriptionField,
-                "Due Date:", dateSpinner,
+                "Select Date:", dateSpinner,
+                "Select Time:", timeSpinner,
                 "Importance:", importanceComboBox,
         };
 
         int option = JOptionPane.showConfirmDialog(this, message, "Add New To-Do", JOptionPane.OK_CANCEL_OPTION);
         if (option == JOptionPane.OK_OPTION) {
+            Calendar dateCalendar = Calendar.getInstance();
+            dateCalendar.setTime((Date)dateSpinner.getValue());
+
+            Calendar timeCalendar = Calendar.getInstance();
+            timeCalendar.setTime((Date)timeSpinner.getValue());
+
+            dateCalendar.set(Calendar.HOUR_OF_DAY, timeCalendar.get(Calendar.HOUR_OF_DAY));
+            dateCalendar.set(Calendar.MINUTE, timeCalendar.get(Calendar.MINUTE));
+
             ToDoItem item = new ToDoItem(
                     titleField.getText(),
                     descriptionField.getText(),
-                    dateModel.getDate(),
+                    dateCalendar.getTime(),
                     (Importance) importanceComboBox.getSelectedItem()
             );
             controller.addToDoItem(item);
@@ -89,18 +116,38 @@ public class MainWindow extends JFrame {
                 switch (item.getImportance()) {
                     case HIGH:
                         setBackground(Color.RED);
+                        setForeground(Color.WHITE);
                         break;
                     case MEDIUM:
                         setBackground(Color.YELLOW);
+                        setForeground(Color.BLACK);
                         break;
                     case LOW:
                         setBackground(Color.GREEN);
+                        setForeground(Color.BLACK);
                         break;
                 }
             }
             return c;
         }
     }
+
+    private void deleteToDoItem(ActionEvent event) {
+        int selectedIndex = toDoList.getSelectedIndex();
+        if (selectedIndex != -1) {
+            // Remove from the UI list
+            ToDoItem itemToRemove = toDoListModel.getElementAt(selectedIndex);
+            toDoListModel.removeElementAt(selectedIndex);
+
+            // Remove from the controller/storage
+            controller.deleteToDoItem(itemToRemove);
+
+            JOptionPane.showMessageDialog(this, "To-Do item deleted successfully.");
+        } else {
+            JOptionPane.showMessageDialog(this, "Please select a To-Do item to delete.");
+        }
+    }
+
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
